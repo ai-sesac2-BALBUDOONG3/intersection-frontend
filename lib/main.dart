@@ -10,6 +10,7 @@ import 'package:intersection/screens/signup_step2_screen.dart';
 import 'package:intersection/screens/signup_step3_screen.dart';
 import 'package:intersection/screens/signup_step4_screen.dart';
 import 'package:intersection/screens/recommended_screen.dart';
+import 'package:intersection/screens/login_screen.dart';
 
 void main() {
   runApp(const IntersectionApp());
@@ -23,6 +24,7 @@ class IntersectionApp extends StatelessWidget {
     return MaterialApp(
       title: 'intersection',
       debugShowCheckedModeBanner: false,
+
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1a1a1a),
@@ -41,7 +43,7 @@ class IntersectionApp extends StatelessWidget {
             color: Color(0xFF1a1a1a),
           ),
         ),
-        // Enhanced button styles
+
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF1a1a1a),
@@ -57,6 +59,7 @@ class IntersectionApp extends StatelessWidget {
             ),
           ),
         ),
+
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFF1a1a1a),
@@ -72,6 +75,7 @@ class IntersectionApp extends StatelessWidget {
             ),
           ),
         ),
+
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF1a1a1a),
@@ -88,7 +92,7 @@ class IntersectionApp extends StatelessWidget {
             ),
           ),
         ),
-        // Enhanced input decoration
+
         inputDecorationTheme: InputDecorationTheme(
           contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           border: OutlineInputBorder(
@@ -126,9 +130,8 @@ class IntersectionApp extends StatelessWidget {
           ? const LandingScreen()
           : const MainTabScreen(),
 
-      // 회원가입 관련 라우트
+      // 라우트 목록
       onGenerateRoute: (settings) {
-        // 라우트 인자 처리
         final args = settings.arguments;
 
         switch (settings.name) {
@@ -136,10 +139,12 @@ class IntersectionApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (_) => const PhoneVerificationScreen(),
             );
+
           case '/signup/step1':
             return MaterialPageRoute(
               builder: (_) => const SignupStep1Screen(),
             );
+
           case '/signup/step2':
             if (args is SignupFormData) {
               return MaterialPageRoute(
@@ -147,6 +152,7 @@ class IntersectionApp extends StatelessWidget {
               );
             }
             return _errorRoute('회원가입 데이터가 누락되었습니다.');
+
           case '/signup/step3':
             if (args is SignupFormData) {
               return MaterialPageRoute(
@@ -154,6 +160,7 @@ class IntersectionApp extends StatelessWidget {
               );
             }
             return _errorRoute('회원가입 데이터가 누락되었습니다.');
+
           case '/signup/step4':
             if (args is SignupFormData) {
               return MaterialPageRoute(
@@ -161,14 +168,17 @@ class IntersectionApp extends StatelessWidget {
               );
             }
             return _errorRoute('회원가입 데이터가 누락되었습니다.');
+
           case '/login':
             return MaterialPageRoute(
-              builder: (_) => const LandingScreen(),
+              builder: (_) => const LoginScreen(),
             );
+
           case '/recommended':
             return MaterialPageRoute(
               builder: (_) => const RecommendedFriendsScreen(),
             );
+
           default:
             return _errorRoute('존재하지 않는 페이지입니다.');
         }

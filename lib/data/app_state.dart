@@ -105,4 +105,10 @@ class AppState {
   static void unfollow(User user) {
     followingIds.remove(user.id);
   }
+  static String? token;
+
+  static void login(String newToken) {
+  token = newToken;
+  }
+
 }

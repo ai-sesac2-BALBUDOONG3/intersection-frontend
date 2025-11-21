@@ -14,6 +14,7 @@ class LandingScreen extends StatelessWidget {
           children: [
             // Top spacer
             SizedBox(height: screenHeight * 0.08),
+
             // Logo section
             Expanded(
               child: Center(
@@ -46,6 +47,7 @@ class LandingScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 32),
+
                         // Title
                         Text(
                           '기억의 교집합',
@@ -58,6 +60,7 @@ class LandingScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
+
                         Text(
                           'intersection',
                           textAlign: TextAlign.center,
@@ -69,7 +72,7 @@ class LandingScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        // Subtitle
+
                         Text(
                           '그때의 우리, 지금의 나',
                           textAlign: TextAlign.center,
@@ -86,6 +89,7 @@ class LandingScreen extends StatelessWidget {
                 ),
               ),
             ),
+
             // Button section
             Padding(
               padding: const EdgeInsets.fromLTRB(28.0, 24.0, 28.0, 32.0),
@@ -106,9 +110,7 @@ class LandingScreen extends StatelessWidget {
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('로그인 화면은 준비 중입니다.')),
-                        );
+                        Navigator.pushNamed(context, '/login'); // 🔥 로그인 화면 이동
                       },
                       child: const Text('이미 계정이 있으신가요? 로그인'),
                     ),

@@ -4,19 +4,20 @@ import 'package:intersection/screens/friends_screen.dart';
 import 'package:intersection/screens/community_screen.dart';
 
 class MainTabScreen extends StatefulWidget {
-  const MainTabScreen({super.key});
+  final int initialIndex;
+  const MainTabScreen({super.key, this.initialIndex = 1});
 
   @override
   State<MainTabScreen> createState() => _MainTabScreenState();
 }
 
 class _MainTabScreenState extends State<MainTabScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex = widget.initialIndex;
 
   final _screens = const [
-    RecommendedFriendsScreen(),
-    FriendsScreen(),
-    CommunityScreen(),
+    FriendsScreen(),              // ← 친구 목록을 첫 번째 탭으로
+    RecommendedFriendsScreen(),   // ← 추천 친구
+    CommunityScreen(),            // ← 커뮤니티
   ];
 
   @override
@@ -32,14 +33,14 @@ class _MainTabScreenState extends State<MainTabScreen> {
         },
         destinations: const [
           NavigationDestination(
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: '친구목록',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.person_search_outlined),
             selectedIcon: Icon(Icons.person_search),
             label: '추천친구',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: '친구',
           ),
           NavigationDestination(
             icon: Icon(Icons.forum_outlined),

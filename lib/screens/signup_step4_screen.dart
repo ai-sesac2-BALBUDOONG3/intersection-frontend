@@ -1,10 +1,8 @@
-import 'dart:convert';
-
+// signup_step4_screen.dart
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-
 import '../data/signup_form_data.dart';
-import '../config/api_config.dart'; // ✅ 우리가 만든 ApiConfig 불러오는 곳
+import '../services/api_service.dart';
+import 'package:intersection/screens/main_tab_screen.dart';
 
 class SignupStep4Screen extends StatefulWidget {
   final SignupFormData data;
@@ -16,214 +14,306 @@ class SignupStep4Screen extends StatefulWidget {
 }
 
 class _SignupStep4ScreenState extends State<SignupStep4Screen> {
-  final _interestsController = TextEditingController();
-  bool _agreed = false;
-  bool _isSubmitting = false;
+  // 필수 입력
+  late TextEditingController schoolNameController;
+  late TextEditingController entryYearController;
+  String? selectedSchoolLevel;
+
+  // 선택 입력
+  late TextEditingController nicknamesController;
+  late TextEditingController memoryKeywordsController;
+  late TextEditingController interestsController;
+
+  // 전학 여부
+  bool hasTransferInfo = false;
+  late TextEditingController transferInfoController;
+
+  // 드롭다운 옵션
+  final List<String> schoolLevels = ['초등학교', '중학교', '고등학교'];
+
+  @override
+  void initState() {
+    super.initState();
+
+    schoolNameController = TextEditingController(text: widget.data.schoolName);
+    entryYearController = TextEditingController(text: widget.data.entryYear);
+    selectedSchoolLevel =
+        widget.data.schoolLevel.isNotEmpty ? widget.data.schoolLevel : null;
+
+    nicknamesController =
+        TextEditingController(text: widget.data.nicknames ?? '');
+    memoryKeywordsController =
+        TextEditingController(text: widget.data.memoryKeywords ?? '');
+    interestsController =
+        TextEditingController(text: (widget.data.interests ?? []).join(', '));
+
+    hasTransferInfo = widget.data.transferInfo?.isNotEmpty == true;
+    transferInfoController =
+        TextEditingController(text: widget.data.transferInfo ?? '');
+  }
 
   @override
   void dispose() {
-    _interestsController.dispose();
+    schoolNameController.dispose();
+    entryYearController.dispose();
+    nicknamesController.dispose();
+    memoryKeywordsController.dispose();
+    interestsController.dispose();
+    transferInfoController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_agreed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('약관에 동의해야 가입이 완료돼요.')),
-      );
+  bool _isValidYear(String year) {
+    if (year.isEmpty) return false;
+    final parsed = int.tryParse(year);
+    final now = DateTime.now().year;
+    return parsed != null && parsed >= 1980 && parsed <= now;
+  }
+
+  bool _canProceed() {
+    return selectedSchoolLevel != null &&
+        schoolNameController.text.isNotEmpty &&
+        _isValidYear(entryYearController.text);
+  }
+
+  Future<void> _submitSignup() async {
+    final form = widget.data;
+
+    // 출생년도 검증 (백엔드 오류 방지)
+    final birthYear = int.tryParse(form.birthYear);
+    final currentYear = DateTime.now().year;
+
+    if (birthYear == null || birthYear < 1900 || birthYear > currentYear) {
+      _showError('생년도를 올바르게 입력해주세요.');
       return;
     }
 
-    setState(() {
-      _isSubmitting = true;
-    });
+    final admissionYear = int.tryParse(entryYearController.text);
+    if (admissionYear == null ||
+        admissionYear < 1980 ||
+        admissionYear > currentYear) {
+      _showError('입학년도를 올바르게 입력해주세요.');
+      return;
+    }
 
-    // ✅ 기존 data + 관심사 업데이트
-    final updated = widget.data.copyWith(
-      interests: _interestsController.text
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList(),
+    // 선택 항목 데이터 정리
+    final interestsList = interestsController.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    // payload 생성 (백엔드 스키마에 맞게)
+    final payload = {
+      'email': form.loginId,
+      'password': form.password,
+      'name': form.name,
+      'birth_year': birthYear,
+      'gender': form.gender.isNotEmpty ? form.gender : null,
+      'region': form.baseRegion,
+      'school_name': schoolNameController.text,
+      'school_type': selectedSchoolLevel,
+      'admission_year': admissionYear,
+    };
+
+    try {
+      await ApiService.signup(payload);
+
+      // 회원가입 성공
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('회원가입 완료'),
+          content: const Text('intersection에 오신 것을 환영합니다!'),
+          actions: [
+            TextButton(
+              child: const Text('확인'),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const MainTabScreen(initialIndex: 1),
+                  ),
+                  (route) => false,
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _showError(e.toString());
+    }
+  }
+
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('오류'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            child: const Text('확인'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
     );
-
-    // ✅ birthYear를 정수로 변환
-    int? birthYearInt;
-    try {
-      birthYearInt = int.parse(updated.birthYear);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('생년도가 올바르지 않습니다')),
-      );
-      setState(() {
-        _isSubmitting = false;
-      });
-      return;
-    }
-
-    // 공통 설정에서 baseUrl 가져와서 backend의 사용자 생성 엔드포인트로 요청
-    // (서버의 OpenAPI에 따라 경로가 '/users/'인 경우가 있어 그에 맞춰 전송)
-    final url = Uri.parse("${ApiConfig.baseUrl}/users/");
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          // FastAPI UserCreate 스키마에 맞춘 필드명
-          "email": updated.email ?? updated.userId,
-          "password": updated.password,
-          "name": updated.name,
-          "birth_year": birthYearInt,
-          "gender": updated.gender ?? '',
-          "region": updated.region,
-          "school_name": updated.schoolName ?? '',
-          "school_type": updated.schoolLevel ?? '',
-          "admission_year": int.tryParse(updated.entryYear) ?? 0,
-          // 추가 정보는 서버가 받으면 처리하고, 아니면 무시됩니다.
-          "interests": updated.interests ?? [],
-        }),
-      );
-
-      // 위 await 이후에 위젯이 언마운트 되었을 수 있으니 확인
-      if (!mounted) return;
-
-      setState(() {
-        _isSubmitting = false;
-      });
-
-      // 디버그 로그: 응답 상세
-      debugPrint('Signup response: ${response.statusCode} ${response.body}');
-
-      // 2xx 계열은 성공으로 간주하되, 서버가 명시적으로 success:false를 반환하면 오류 표시
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        dynamic data;
-        try {
-          data = jsonDecode(response.body);
-        } catch (_) {
-          data = null;
-        }
-
-        final bool serverExplicitFailure = data is Map && data['success'] == false;
-
-        if (!serverExplicitFailure) {
-          if (!mounted) return;
-          showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('회원가입 완료'),
-              content: const Text('intersection에 오신 걸 환영합니다!'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // 다이얼로그 닻기
-                    // 전체 네비게이션 스택을 제거하고 추천 화면으로 이동
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/recommended',
-                      (route) => false,
-                    );
-                  },
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
-          );
-        } else {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? '오류가 발생했어요.')),
-          );
-        }
-      } else {
-          if (!mounted) return;
-          // 서버 에러일 때 응답 본문을 사용자에게 보여줍니다 (디버깅 도움)
-          String bodyPreview = response.body;
-          try {
-            final parsed = jsonDecode(response.body);
-            bodyPreview = parsed is String ? parsed : jsonEncode(parsed);
-          } catch (_) {
-            // ignore JSON parse errors, keep raw body
-          }
-          showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: Text('서버 오류 (${response.statusCode})'),
-              content: SingleChildScrollView(child: Text(bodyPreview)),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('닫기'),
-                ),
-              ],
-            ),
-          );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isSubmitting = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('통신 오류: $e')),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('회원가입 4/4 - 추가 정보')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _interestsController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: '추가 정보 / 관심사',
-                hintText: '예: 98년생, 추억의 만화, A초등학교 시절 친구들...',
+      appBar: AppBar(
+        title: const Text('회원가입 - 4단계'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('학교 정보 입력',
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+
+                  // 학교급
+                  const Text('학교급', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedSchoolLevel,
+                    hint: const Text('초/중/고'),
+                    items: schoolLevels
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedSchoolLevel = v),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: const Icon(Icons.school_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 학교명
+                  const Text('학교명', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: schoolNameController,
+                    decoration: InputDecoration(
+                      hintText: '예: OO초등학교',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: const Icon(Icons.location_city_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 입학년도
+                  const Text('입학년도', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: entryYearController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: '예: 2010',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: const Icon(Icons.calendar_month_outlined),
+                      errorText: entryYearController.text.isNotEmpty &&
+                              !_isValidYear(entryYearController.text)
+                          ? '올바른 연도를 입력해주세요'
+                          : null,
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+
+                  const SizedBox(height: 32),
+                  const Divider(height: 32),
+
+                  // ===== 선택 항목 =====
+                  const Text('추가 정보 (선택사항)',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+
+                  // 별명
+                  const Text('별명들 (선택사항)',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: nicknamesController,
+                    decoration: InputDecoration(
+                      hintText: '예: 철수, 공대로봇',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: const Icon(Icons.person_pin_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 기억 키워드
+                  const Text('기억 키워드 (선택사항)',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: memoryKeywordsController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: '예: 운동회, 소풍, 학교축제',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: const Icon(Icons.favorite_border),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 관심사
+                  const Text('관심사 (선택사항)',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: interestsController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: '예: 만화, 야구, 힙합',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: const Icon(Icons.star_border),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Checkbox(
-                  value: _agreed,
-                  onChanged: (v) {
-                    setState(() {
-                      _agreed = v ?? false;
-                    });
-                  },
-                ),
-                const Expanded(
-                  child: Text(
-                    '서비스 이용약관 및 개인정보 처리방침에 동의합니다.',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
+          ),
+
+          // 하단 버튼
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _isSubmitting ? null : _submit,
-                child: _isSubmitting
-                    ? const CircularProgressIndicator()
-                    : const Text('완료'),
+                onPressed: _canProceed() ? _submitSignup : null,
+                child: const Text('회원가입 완료'),
               ),
             ),
-            const Spacer(),
-            const Text(
-              '추가 정보는 추천 알고리즘 개선에만 활용되며\n'
-              '외부에 공개되지 않아요.\n'
-              '이 정보는 마이페이지에서 언제든지 수정할 수 있어요.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
