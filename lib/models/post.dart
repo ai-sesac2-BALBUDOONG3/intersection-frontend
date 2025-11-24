@@ -1,6 +1,6 @@
 class Post {
-  final String id;
-  final String authorId;
+  final int id;
+  final int authorId;
   final String content;
   final List<String> mediaUrls;
   final DateTime createdAt;

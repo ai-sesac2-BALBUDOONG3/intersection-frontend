@@ -3,50 +3,72 @@ import 'package:intersection/data/app_state.dart';
 import 'package:intersection/models/post.dart';
 import 'package:intersection/models/user.dart';
 
-class CommunityScreen extends StatelessWidget {
+class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
+
+  @override
+  State<CommunityScreen> createState() => _CommunityScreenState();
+}
+
+class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
     final me = AppState.currentUser;
-    final posts = AppState.communityPosts; // ← AppState에서 필터된 게시물
+    final posts = AppState.communityPosts;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('커뮤니티'),
       ),
+
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.black,
+        shape: const CircleBorder(),
+        onPressed: () async {
+          final result = await Navigator.pushNamed(context, '/write');
+          if (result == true) {
+            setState(() {});
+          }
+        },
+        child: const Icon(Icons.edit, color: Colors.white),
+      ),
+
       body: me == null
-          ? const Center(child: Text('로그인 정보가 없어요. 앱을 다시 시작해줘.'))
+          ? const Center(child: Text('로그인이 필요해요.'))
           : posts.isEmpty
               ? const Center(
                   child: Text(
-                    '아직 커뮤니티에 글이 없어요.\n나중에 글 작성 기능도 붙이자.',
+                    '아직 커뮤니티에 글이 없어요.\n글쓰기 버튼을 눌러 첫 글을 작성해보세요!',
                     textAlign: TextAlign.center,
                   ),
                 )
-              : ListView.builder(
+              : ListView.separated(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   itemCount: posts.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 24),
                   itemBuilder: (context, index) {
                     final post = posts[index];
 
-                    // 🔥 author 찾기 (friends + 나)
                     User? author;
-                    final allKnownUsers = [
+                    final knownUsers = [
                       if (me != null) me,
-                      ...AppState.friends
+                      ...AppState.friends,
                     ];
 
+                    // 🔥 타입 맞춰서 비교
                     try {
-                      author = allKnownUsers.firstWhere(
-                        (u) => u.id == post.authorId,
+                      author = knownUsers.firstWhere(
+                        (u) => u.id.toString() == post.authorId,
                       );
                     } catch (_) {
                       author = null;
                     }
 
-                    return _PostCard(
+                    return _ThreadPost(
                       post: post,
                       author: author,
                     );
@@ -56,89 +78,100 @@ class CommunityScreen extends StatelessWidget {
   }
 }
 
-class _PostCard extends StatelessWidget {
+class _ThreadPost extends StatelessWidget {
   final Post post;
   final User? author;
 
-  const _PostCard({
+  const _ThreadPost({
     required this.post,
     required this.author,
   });
 
   @override
   Widget build(BuildContext context) {
-    final displayName = author?.name ?? "알 수 없는 사용자";
-    final displaySub = author == null
-        ? ""
-        : "${author!.school} · ${author!.region}";
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  child: Icon(Icons.person),
-                ),
-                const SizedBox(width: 8),
-
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (displaySub.isNotEmpty)
-                      Text(
-                        displaySub,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Text(
-              post.content,
-              style: const TextStyle(fontSize: 14),
-            ),
-
-            const SizedBox(height: 8),
-
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('좋아요는 나중에')),
-                    );
-                  },
-                  icon: const Icon(Icons.favorite_border),
-                  visualDensity: VisualDensity.compact,
-                ),
-                IconButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('댓글은 나중에')),
-                    );
-                  },
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-          ],
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const CircleAvatar(
+          radius: 22,
+          child: Icon(Icons.person),
         ),
-      ),
+        const SizedBox(width: 12),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    author?.name ?? "알 수 없음",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    author != null
+                        ? "${author!.school} · ${author!.region}"
+                        : "",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.more_horiz),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              Text(
+                post.content,
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Icon(Icons.favorite_border,
+                      size: 20, color: Colors.grey.shade700),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/comments',
+                          arguments: post);
+                    },
+                    child: Row(
+                      children: [
+                        Icon(Icons.chat_bubble_outline,
+                            size: 18, color: Colors.grey.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          '댓글 보기',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

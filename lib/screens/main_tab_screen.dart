@@ -14,16 +14,17 @@ class MainTabScreen extends StatefulWidget {
 class _MainTabScreenState extends State<MainTabScreen> {
   late int _currentIndex = widget.initialIndex;
 
-  final _screens = const [
-    FriendsScreen(),              // ← 친구 목록을 첫 번째 탭으로
-    RecommendedFriendsScreen(),   // ← 추천 친구
-    CommunityScreen(),            // ← 커뮤니티
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // 🔥 매번 빌드될 때 화면을 다시 생성함
+    final screens = [
+      const FriendsScreen(),
+      const RecommendedFriendsScreen(),
+      const CommunityScreen(),   // ← 커뮤니티가 항상 새로 생성됨!
+    ];
+
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: screens[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
