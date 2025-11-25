@@ -26,8 +26,8 @@ class LandingScreen extends StatelessWidget {
                       children: [
                         // Logo
                         SizedBox(
-                          width: 180,
-                          height: 180,
+                          width: 380,
+                          height: 380,
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
@@ -53,7 +53,7 @@ class LandingScreen extends StatelessWidget {
                           '기억의 교집합',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 30,
                             fontWeight: FontWeight.w800,
                             color: theme.colorScheme.onSurface,
                             letterSpacing: -0.5,
@@ -61,23 +61,12 @@ class LandingScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
 
-                        Text(
-                          'intersection',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
+                        
                         Text(
                           '그때의 우리, 지금의 나',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 15,
                             height: 1.6,
                             color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                             fontWeight: FontWeight.w400,
@@ -102,7 +91,7 @@ class LandingScreen extends StatelessWidget {
                       onPressed: () {
                         Navigator.pushNamed(context, '/signup/phone');
                       },
-                      child: const Text('기억 꺼내기'),
+                      child: const Text('추억 시작하기'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -112,7 +101,7 @@ class LandingScreen extends StatelessWidget {
                       onPressed: () {
                         Navigator.pushNamed(context, '/login'); // 🔥 로그인 화면 이동
                       },
-                      child: const Text('이미 계정이 있으신가요? 로그인'),
+                      child: const Text('로그인'),
                     ),
                   ),
                 ],
