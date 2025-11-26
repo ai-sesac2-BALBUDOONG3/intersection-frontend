@@ -22,8 +22,11 @@ import 'package:intersection/models/post.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 자동 로그인 복원
-  AppState.currentUser = await UserStorage.load();
+  // --------------------------------------------------------
+  // 🔥 자동 로그인 복원 (새 구조)
+  // --------------------------------------------------------
+  AppState.token = await UserStorage.loadToken();
+  AppState.currentUser = await UserStorage.loadUser();
 
   runApp(const IntersectionApp());
 }
@@ -38,106 +41,97 @@ class IntersectionApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
 
       theme: ThemeData(
-  useMaterial3: true,
+        useMaterial3: true,
 
-  // 전체 컬러 톤을 모노톤으로 통일
-  colorScheme: const ColorScheme(
-    brightness: Brightness.light,
-    primary: Colors.black,         // 버튼·강조
-    onPrimary: Colors.white,
-    secondary: Colors.black87,     // 보조 강조
-    onSecondary: Colors.white,
-    error: Colors.redAccent,
-    onError: Colors.white,
-    surface: Colors.white,         // 카드·위젯 배경
-    onSurface: Colors.black,       // 카드 내부 텍스트
-    background: Color(0xFFF7F7F7), // 앱 배경
-    onBackground: Colors.black,
-  ),
+        colorScheme: const ColorScheme(
+          brightness: Brightness.light,
+          primary: Colors.black,
+          onPrimary: Colors.white,
+          secondary: Colors.black87,
+          onSecondary: Colors.white,
+          error: Colors.redAccent,
+          onError: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black,
+          background: Color(0xFFF7F7F7),
+          onBackground: Colors.black,
+        ),
 
-  // 기본 텍스트 컬러 통일
-  fontFamily: 'Pretendard',
-  textTheme: const TextTheme(
-    bodyLarge: TextStyle(color: Colors.black87),
-    bodyMedium: TextStyle(color: Colors.black),
-    bodySmall: TextStyle(color: Colors.black54),
-    titleLarge: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-    titleMedium: TextStyle(color: Colors.black87),
-    titleSmall: TextStyle(color: Colors.black54),
-  ),
+        fontFamily: 'Pretendard',
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.black87),
+          bodyMedium: TextStyle(color: Colors.black),
+          bodySmall: TextStyle(color: Colors.black54),
+          titleLarge: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(color: Colors.black87),
+          titleSmall: TextStyle(color: Colors.black54),
+        ),
 
-  // FilledButton 스타일 (Threads 느낌)
-  filledButtonTheme: FilledButtonThemeData(
-    style: FilledButton.styleFrom(
-      backgroundColor: Colors.black,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            textStyle: const TextStyle(fontWeight: FontWeight.w600),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.black, width: 1.0),
+            foregroundColor: Colors.black,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.black12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.black),
+          ),
+          labelStyle: const TextStyle(color: Colors.black54),
+          hintStyle: const TextStyle(color: Colors.black26),
+        ),
+
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: Colors.black.withOpacity(0.1),
+          labelTextStyle: MaterialStateProperty.all(
+            const TextStyle(color: Colors.black87, fontSize: 12),
+          ),
+          iconTheme: MaterialStateProperty.all(
+            const IconThemeData(color: Colors.black87),
+          ),
+        ),
+
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          shape: CircleBorder(),
+        ),
       ),
-    ),
-  ),
-
-  // ElevatedButton 스타일
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.black,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-  ),
-
-  // OutlinedButton 스타일
-  outlinedButtonTheme: OutlinedButtonThemeData(
-    style: OutlinedButton.styleFrom(
-      side: const BorderSide(color: Colors.black, width: 1.0),
-      foregroundColor: Colors.black,
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ),
-  ),
-
-  // Input(TextField) 스타일
-  inputDecorationTheme: InputDecorationTheme(
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Colors.black12),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Colors.black),
-    ),
-    labelStyle: const TextStyle(color: Colors.black54),
-    hintStyle: const TextStyle(color: Colors.black26),
-  ),
-
-  // NavigationBar(하단 탭) 스타일
-  navigationBarTheme: NavigationBarThemeData(
-    backgroundColor: Colors.white,
-    indicatorColor: Colors.black.withOpacity(0.1),
-    labelTextStyle: MaterialStateProperty.all(
-      const TextStyle(color: Colors.black87, fontSize: 12),
-    ),
-    iconTheme: MaterialStateProperty.all(
-      const IconThemeData(color: Colors.black87),
-    ),
-  ),
-
-  // FloatingActionButton → Threads 느낌
-  floatingActionButtonTheme: const FloatingActionButtonThemeData(
-    backgroundColor: Colors.black,
-    foregroundColor: Colors.white,
-    shape: CircleBorder(),
-  ),
-),
-
 
       // --------------------------------------------------------
-      // 🔥 최초 화면 결정 (자동 로그인 반영)
+      // 🔥 자동 로그인 적용된 초기 화면
       // --------------------------------------------------------
       home: AppState.currentUser == null
           ? const LandingScreen()

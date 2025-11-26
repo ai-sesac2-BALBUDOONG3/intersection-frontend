@@ -1,4 +1,3 @@
-// signup_step4_screen.dart
 import 'package:flutter/material.dart';
 import '../data/signup_form_data.dart';
 import '../services/api_service.dart';
@@ -31,7 +30,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
   bool hasTransferInfo = false;
   late TextEditingController transferInfoController;
 
-  // 드롭다운 옵션
   final List<String> schoolLevels = ['초등학교', '중학교', '고등학교'];
 
   @override
@@ -67,7 +65,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
   }
 
   bool _isValidYear(String year) {
-    if (year.isEmpty) return false;
     final parsed = int.tryParse(year);
     final now = DateTime.now().year;
     return parsed != null && parsed >= 1980 && parsed <= now;
@@ -82,7 +79,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
   Future<void> _submitSignup() async {
     final form = widget.data;
 
-    // 출생년도 검증
     final birthYear = int.tryParse(form.birthYear);
     final currentYear = DateTime.now().year;
 
@@ -99,13 +95,13 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
       return;
     }
 
-    // payload 생성
+    // 서버로 보낼 payload
     final payload = {
       'email': form.loginId,
       'password': form.password,
       'name': form.name,
       'birth_year': birthYear,
-      'gender': form.gender.isNotEmpty ? form.gender : null,
+      'gender': form.gender,
       'region': form.baseRegion,
       'school_name': schoolNameController.text,
       'school_type': selectedSchoolLevel,
@@ -113,25 +109,25 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
     };
 
     try {
-      await ApiService.signup(payload);
+      // 1) 회원가입 요청
+      final signupResult = await ApiService.signup(payload);
+
+      // 2) 서버에서 준 유저 정보로 User 생성
+      final newUser = User.fromJson(signupResult);
+
+      // 3) 로그인 처리
+      final token = await ApiService.login(form.loginId, form.password);
+
+      // 4) 메모리 저장
+      AppState.login(token, newUser);
+
+      // 5) 로컬 저장 (자동로그인)
+      await UserStorage.saveToken(token);
+      await UserStorage.saveUser(newUser);
 
       if (!mounted) return;
 
-      // 🔥 자동 로그인 처리
-      final newUser = User(
-        id: 0, // 실제 서버 ID는 API 응답 기반으로 수정 예정
-        name: form.name,
-        birthYear: birthYear,
-        region: form.baseRegion,
-        school: schoolNameController.text,
-      );
-
-      // 메모리 저장
-      AppState.currentUser = newUser;
-
-      // 로컬 저장 (웹이면 shared_preferences_web 사용됨)
-      await UserStorage.save(newUser);
-
+      // 6) 완료 팝업
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -196,7 +192,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 학교급
                   const Text('학교급', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
@@ -215,7 +210,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 학교명
                   const Text('학교명', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   TextField(
@@ -230,8 +224,8 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 입학년도
-                  const Text('입학년도', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('입학년도',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: entryYearController,
@@ -253,14 +247,12 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   const SizedBox(height: 32),
                   const Divider(height: 32),
 
-                  // 선택 항목 UI (생략 없이 그대로 유지)
                   const Text(
                     '추가 정보 (선택사항)',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
 
-                  // 별명
                   const Text('별명들 (선택사항)',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
@@ -276,7 +268,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 기억 키워드
                   const Text('기억 키워드 (선택사항)',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
@@ -293,7 +284,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 관심사
                   const Text('관심사 (선택사항)',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
@@ -315,7 +305,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
             ),
           ),
 
-          // 하단 버튼
           Padding(
             padding: const EdgeInsets.all(24),
             child: SizedBox(

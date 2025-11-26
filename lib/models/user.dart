@@ -1,13 +1,21 @@
-class User {
-  final int id;
-  final String name;
-  final int birthYear;
-  final String region;
-  final String school;
+// lib/models/user.dart
 
-  String? profileImageUrl;        // 프로필 사진 (변경 가능)
-  String? backgroundImageUrl;     // 배경사진 (변경 가능)
-  List<String> feedImages;        // 인스타 피드 이미지 리스트
+import 'dart:typed_data';
+
+class User {
+  int id;
+  String name;
+  int birthYear;
+  String region;
+  String school;
+
+  String? profileImageUrl;        
+  String? backgroundImageUrl;     
+  List<String> feedImages;
+
+  // 🔥 웹 지원용 (Memory Image)
+  Uint8List? profileImageBytes;
+  Uint8List? backgroundImageBytes;
 
   User({
     required this.id,
@@ -17,6 +25,8 @@ class User {
     required this.school,
     this.profileImageUrl,
     this.backgroundImageUrl,
+    this.profileImageBytes,
+    this.backgroundImageBytes,
     List<String>? feedImages,
   }) : feedImages = feedImages ?? [];
 
@@ -31,7 +41,11 @@ class User {
       profileImageUrl: json["profile_image"],
       backgroundImageUrl: json["background_image"],
 
-      feedImages: (json["feed_images"] != null)
+      // 🔥 서버는 bytes 안줌 → null 유지
+      profileImageBytes: null,
+      backgroundImageBytes: null,
+
+      feedImages: json["feed_images"] != null
           ? List<String>.from(json["feed_images"])
           : [],
     );
@@ -44,7 +58,6 @@ class User {
       "birth_year": birthYear,
       "region": region,
       "school_name": school,
-
       "profile_image": profileImageUrl,
       "background_image": backgroundImageUrl,
       "feed_images": feedImages,

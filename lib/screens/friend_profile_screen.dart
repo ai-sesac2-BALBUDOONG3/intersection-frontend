@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intersection/models/user.dart';
 import 'package:intersection/screens/image_viewer.dart';
@@ -11,9 +12,24 @@ class FriendProfileScreen extends StatelessWidget {
     required this.user,
   });
 
+  // ==========================================================
+  // 🔥 통합 이미지 Provider (웹/모바일 모두 정상 동작)
+  // ==========================================================
+  ImageProvider buildProvider(String? url, Uint8List? bytes) {
+    if (bytes != null) return MemoryImage(bytes); // Web/Mobile 공용
+    if (url != null && url.startsWith("http")) return NetworkImage(url);
+    if (url != null && !kIsWeb && File(url).existsSync()) {
+      return FileImage(File(url));
+    }
+    return const AssetImage("assets/default_profile.png");
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
+
+    final bg = buildProvider(user.backgroundImageUrl, user.backgroundImageBytes);
+    final profile = buildProvider(user.profileImageUrl, user.profileImageBytes);
 
     return Scaffold(
       appBar: AppBar(
@@ -28,20 +44,23 @@ class FriendProfileScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // ==========================
-            // 1) 배경 이미지
-            // ==========================
+            // ==========================================================
+            // 🔥 1) 배경 이미지
+            // ==========================================================
             Stack(
               clipBehavior: Clip.none,
               children: [
                 GestureDetector(
                   onTap: () {
-                    if (user.backgroundImageUrl != null) {
+                    if (user.backgroundImageUrl != null ||
+                        user.backgroundImageBytes != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              ImageViewer(imageUrl: user.backgroundImageUrl!),
+                          builder: (_) => ImageViewer(
+                            imageUrl: user.backgroundImageUrl,
+                            bytes: user.backgroundImageBytes,
+                          ),
                         ),
                       );
                     }
@@ -50,37 +69,31 @@ class FriendProfileScreen extends StatelessWidget {
                     height: 190,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      image: user.backgroundImageUrl != null
-                          ? DecorationImage(
-                              image: _imageProvider(user.backgroundImageUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      gradient: user.backgroundImageUrl == null
-                          ? const LinearGradient(
-                              colors: [Color(0xFF1a1a1a), Color(0xFF444444)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
+                      image: DecorationImage(
+                        image: bg,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
 
-                // ==========================
-                // 2) 프로필 이미지 중앙
-                // ==========================
+                // ==========================================================
+                // 🔥 2) 프로필 이미지 (중앙)
+                // ==========================================================
                 Positioned(
                   bottom: -50,
-                  left: (width / 2) - 50,
+                  left: width / 2 - 50,
                   child: GestureDetector(
                     onTap: () {
-                      if (user.profileImageUrl != null) {
+                      if (user.profileImageUrl != null ||
+                          user.profileImageBytes != null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                ImageViewer(imageUrl: user.profileImageUrl!),
+                            builder: (_) => ImageViewer(
+                              imageUrl: user.profileImageUrl,
+                              bytes: user.profileImageBytes,
+                            ),
                           ),
                         );
                       }
@@ -89,12 +102,7 @@ class FriendProfileScreen extends StatelessWidget {
                       tag: "friend-profile-${user.id}",
                       child: CircleAvatar(
                         radius: 50,
-                        backgroundImage: user.profileImageUrl != null
-                            ? _imageProvider(user.profileImageUrl!)
-                            : null,
-                        child: user.profileImageUrl == null
-                            ? const Icon(Icons.person, size: 48)
-                            : null,
+                        backgroundImage: profile,
                       ),
                     ),
                   ),
@@ -104,9 +112,9 @@ class FriendProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 70),
 
-            // ==========================
-            // 3) 이름 + 설명
-            // ==========================
+            // ==========================================================
+            // 🔥 3) 이름 + 한 줄 정보
+            // ==========================================================
             Text(
               user.name,
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
@@ -119,9 +127,9 @@ class FriendProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // ==========================
-            // 4) 친구 피드 (인스타 그리드)
-            // ==========================
+            // ==========================================================
+            // 🔥 4) 친구 인스타 피드
+            // ==========================================================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
@@ -138,46 +146,65 @@ class FriendProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: user.feedImages.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 4,
-                crossAxisSpacing: 4,
-              ),
-              itemBuilder: (context, index) {
-                final img = user.feedImages[index];
+            // 🔥 게시물 없으면 "게시물이 없습니다" 표시
+            if (user.feedImages.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Column(
+                  children: const [
+                    Icon(Icons.photo_library_outlined,
+                        size: 48, color: Colors.grey),
+                    SizedBox(height: 12),
+                    Text(
+                      "게시물이 없습니다",
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              )
+            else
+              GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: user.feedImages.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 4,
+                ),
+                itemBuilder: (context, index) {
+                  final img = user.feedImages[index];
+                  final provider = buildProvider(img, null);
 
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ImageViewer(imageUrl: img),
-                      ),
-                    );
-                  },
-                  child: Hero(
-                    tag: img,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image(
-                        image: _imageProvider(img),
-                        fit: BoxFit.cover,
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ImageViewer(imageUrl: img, bytes: null),
+                        ),
+                      );
+                    },
+                    child: Hero(
+                      tag: img,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image(
+                          image: provider,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
             const SizedBox(height: 40),
 
-            // ==========================
-            // 5) 상세 정보
-            // ==========================
+            // ==========================================================
+            // 🔥 5) 기본 정보
+            // ==========================================================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -201,16 +228,5 @@ class FriendProfileScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  // ==========================
-  // 로컬 이미지/네트워크 자동 구분 로더
-  // ==========================
-  ImageProvider _imageProvider(String path) {
-    if (path.startsWith("http")) {
-      return NetworkImage(path);
-    } else {
-      return FileImage(File(path));
-    }
   }
 }

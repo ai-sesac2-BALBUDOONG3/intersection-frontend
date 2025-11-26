@@ -1,4 +1,6 @@
+// lib/screens/profile_screen.dart
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intersection/data/app_state.dart';
 import 'package:intersection/screens/edit_profile_screen.dart';
@@ -13,23 +15,45 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  Future<void> _pickBackgroundImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result == null) return;
-
-    final file = result.files.first;
-    setState(() {
-      AppState.currentUser!.backgroundImageUrl = file.path;
-    });
+  // =====================================================
+  // 이미지 Provider (웹/모바일 자동 분기)
+  // =====================================================
+  ImageProvider buildImageProvider(String? url, Uint8List? bytes) {
+    if (bytes != null) return MemoryImage(bytes);
+    if (url != null && url.startsWith("http")) return NetworkImage(url);
+    if (url != null && !kIsWeb && File(url).existsSync()) {
+      return FileImage(File(url));
+    }
+    return const AssetImage("assets/default_profile.png");
   }
 
-  Future<void> _pickProfileImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result == null) return;
+  // =====================================================
+  // 이미지 선택 (프로필/배경 공용)
+  // =====================================================
+  Future<void> _pickImage({required bool isProfile}) async {
+    final user = AppState.currentUser!;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
 
+    if (result == null) return;
     final file = result.files.first;
+
     setState(() {
-      AppState.currentUser!.profileImageUrl = file.path;
+      if (kIsWeb) {
+        if (isProfile) {
+          user.profileImageBytes = file.bytes;
+        } else {
+          user.backgroundImageBytes = file.bytes;
+        }
+      } else {
+        if (isProfile) {
+          user.profileImageUrl = file.path;
+        } else {
+          user.backgroundImageUrl = file.path;
+        }
+      }
     });
   }
 
@@ -37,6 +61,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = AppState.currentUser!;
     final width = MediaQuery.of(context).size.width;
+
+    final bgProvider =
+        buildImageProvider(user.backgroundImageUrl, user.backgroundImageBytes);
+    final profileProvider =
+        buildImageProvider(user.profileImageUrl, user.profileImageBytes);
 
     return Scaffold(
       appBar: AppBar(
@@ -46,19 +75,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             // =====================================================
-            // 🔥 1) 상단 - 배경 이미지 + 프로필 이미지 (새 기능)
+            // 🔥 1) 상단 - 배경 + 프로필 (카메라 버튼 제거)
             // =====================================================
             Stack(
               clipBehavior: Clip.none,
               children: [
                 GestureDetector(
                   onTap: () {
-                    if (user.backgroundImageUrl != null) {
+                    if (user.backgroundImageUrl != null ||
+                        user.backgroundImageBytes != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              ImageViewer(imageUrl: user.backgroundImageUrl!),
+                          builder: (_) => ImageViewer(
+                            imageUrl: user.backgroundImageUrl,
+                            bytes: user.backgroundImageBytes,
+                          ),
                         ),
                       );
                     }
@@ -67,23 +99,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 190,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      image: user.backgroundImageUrl != null
-                          ? DecorationImage(
-                              image: user.backgroundImageUrl!.startsWith("http")
-                                  ? NetworkImage(user.backgroundImageUrl!)
-                                  : FileImage(
-                                      File(user.backgroundImageUrl!),
-                                    ) as ImageProvider,
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      gradient: user.backgroundImageUrl == null
-                          ? const LinearGradient(
-                              colors: [Color(0xFF1a1a1a), Color(0xFF444444)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
+                      image: DecorationImage(
+                        image: bgProvider,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
@@ -93,7 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   right: 12,
                   bottom: 12,
                   child: ElevatedButton(
-                    onPressed: _pickBackgroundImage,
+                    onPressed: () => _pickImage(isProfile: false),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black45,
                       foregroundColor: Colors.white,
@@ -102,60 +121,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                // 프로필 사진
+                // 프로필 이미지
                 Positioned(
                   bottom: -50,
                   left: width / 2 - 50,
                   child: GestureDetector(
                     onTap: () {
-                      if (user.profileImageUrl != null) {
+                      if (user.profileImageUrl != null ||
+                          user.profileImageBytes != null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                ImageViewer(imageUrl: user.profileImageUrl!),
+                            builder: (_) => ImageViewer(
+                              imageUrl: user.profileImageUrl,
+                              bytes: user.profileImageBytes,
+                            ),
                           ),
                         );
                       }
                     },
                     child: CircleAvatar(
                       radius: 50,
-                      backgroundImage: user.profileImageUrl != null
-                          ? (user.profileImageUrl!.startsWith("http")
-                              ? NetworkImage(user.profileImageUrl!)
-                              : FileImage(File(user.profileImageUrl!))
-                                  as ImageProvider)
-                          : null,
-                      child: user.profileImageUrl == null
-                          ? const Icon(Icons.person, size: 48)
-                          : null,
+                      backgroundImage: profileProvider,
                     ),
-                  ),
-                ),
-
-                // 프로필 변경
-                Positioned(
-                  bottom: -60,
-                  right: width / 2 - 50,
-                  child: IconButton(
-                    onPressed: _pickProfileImage,
-                    icon: const Icon(Icons.camera_alt),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 70),
+            const SizedBox(height: 90),
+
+            // 🔥 프로필 사진 변경 버튼 (잘 눌리는 구조)
+            TextButton.icon(
+              onPressed: () => _pickImage(isProfile: true),
+              icon: const Icon(Icons.camera_alt, size: 18),
+              label: const Text(
+                "프로필 사진 변경",
+                style: TextStyle(fontSize: 14),
+              ),
+            ),
+
+            const SizedBox(height: 10),
 
             // =====================================================
-            // 🔥 2) 이름/기본정보 (기존 유지 but 위로 올림)
+            // 🔥 2) 기본 정보 텍스트
             // =====================================================
             Text(
               user.name,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
-
             Text(
               "${user.birthYear}년생 · ${user.school} · ${user.region}",
               style: const TextStyle(color: Colors.grey),
@@ -164,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 32),
 
             // =====================================================
-            // 🔥 3) 내 피드 (grid) - 새 기능
+            // 🔥 3) 인스타 스타일 피드
             // =====================================================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -179,6 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 10),
 
             GridView.builder(
@@ -193,9 +209,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               itemBuilder: (context, index) {
                 final img = user.feedImages[index];
 
-                final imageWidget = img.startsWith("http")
-                    ? Image.network(img, fit: BoxFit.cover)
-                    : Image.file(File(img), fit: BoxFit.cover);
+                final provider = img.startsWith("http")
+                    ? NetworkImage(img)
+                    : (!kIsWeb && File(img).existsSync())
+                        ? FileImage(File(img))
+                        : const AssetImage("assets/default_profile.png")
+                            as ImageProvider;
 
                 return GestureDetector(
                   onTap: () {
@@ -206,7 +225,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     );
                   },
-                  child: Hero(tag: img, child: imageWidget),
+                  child: Hero(
+                    tag: img,
+                    child: Image(
+                      image: provider,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 );
               },
             ),
@@ -214,7 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 40),
 
             // =====================================================
-            // 🔥 4) 기존 “내 정보” UI 완전 유지 (그대로)
+            // 🔥 4) 내 정보 + 로그아웃
             // =====================================================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -236,7 +261,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 20),
 
-                  // 프로필 수정 버튼 (기존 그대로)
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -248,16 +272,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         );
                       },
-                      child: const Text(
-                        "프로필 수정",
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      child: const Text("프로필 수정"),
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
-                  // 로그아웃 (기존 그대로)
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(

@@ -17,6 +17,9 @@ class AppState {
   /// 🔥 커뮤니티 포스트 (추후 API로 대체)
   static List<Post> communityPosts = [];
 
+  /// 내가 참여해본 채팅방 목록 (friendId 기반)
+  static List<int> chatList = [];
+
   /// ----------------------------------------------------
   /// 친구 추가 (로컬 반영)
   /// ----------------------------------------------------
@@ -39,6 +42,20 @@ class AppState {
   static void login(String newToken, User user) {
     token = newToken;
     currentUser = user;
+
+    // 🔥 자동로그인 저장 (추가)
+    UserStorage.saveToken(newToken);
+    UserStorage.saveUser(user);
+  }
+
+  /// ----------------------------------------------------
+  /// 🔥 유저 정보 일부 업데이트 (프로필 수정/사진변경 후)
+  /// ----------------------------------------------------
+  static void updateCurrentUser(User updatedUser) {
+    currentUser = updatedUser;
+
+    // 로컬 저장소에도 반영 (추가)
+    UserStorage.saveUser(updatedUser);
   }
 
   /// ----------------------------------------------------
@@ -49,11 +66,9 @@ class AppState {
     currentUser = null;
     friends = [];
     communityPosts = [];
+    chatList = [];
 
     // 🔥 SharedPreferences 초기화 → 자동로그인 제거
     await UserStorage.clear();
   }
-  /// 내가 참여해본 채팅방 목록 (friendId 기반)
-  static List<int> chatList = [];
-
 }

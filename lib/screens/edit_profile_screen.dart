@@ -38,19 +38,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _saveProfile() async {
     final user = AppState.currentUser!;
+
+    // 기존 이미지/피드 등 유지 + 수정된 값 반영
     final updated = User(
       id: user.id,
       name: nameController.text,
       birthYear: int.tryParse(yearController.text) ?? user.birthYear,
       region: regionController.text,
       school: schoolController.text,
+
+      // ⬇ 기존 필드 유지 (프로필/배경/피드)
+      profileImageUrl: user.profileImageUrl,
+      backgroundImageUrl: user.backgroundImageUrl,
+      feedImages: user.feedImages,
     );
 
-    // 메모리 업데이트
+    // 메모리에 적용
     AppState.currentUser = updated;
 
-    // 로컬 저장
-    await UserStorage.save(updated);
+    // 로컬 저장 (⚡ 지금은 saveUser 로 통합됨)
+    await UserStorage.saveUser(updated);
 
     if (!mounted) return;
     Navigator.pop(context);
@@ -70,7 +77,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 16),
             _buildField("학교", schoolController),
             const SizedBox(height: 16),
-            _buildField("입학년도", yearController, number: true),
+            _buildField("출생연도", yearController, number: true),
             const Spacer(),
             SizedBox(
               width: double.infinity,
