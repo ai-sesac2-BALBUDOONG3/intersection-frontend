@@ -1,150 +1,131 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
-import '../models/user.dart';
-import '../data/app_state.dart';
+import 'package:intersection/config/api_config.dart';
+import 'package:intersection/models/user.dart';
 
 class ApiService {
-  // ----------------------------------------------------
-  // 공통 헤더
-  // ----------------------------------------------------
-  static Map<String, String> _headers({bool json = true}) {
-    final token = AppState.token;
-    return {
-      if (json) "Content-Type": "application/json",
-      if (token != null) "Authorization": "Bearer $token",
+  ApiService._();
+
+  /// 공통 JSON 헤더
+  static Map<String, String> _jsonHeaders({String? token}) {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
-  }
 
-  // ----------------------------------------------------
-  // 1) 회원가입
-  // ----------------------------------------------------
-  static Future<Map<String, dynamic>> signup(Map<String, dynamic> data) async {
-    final url = Uri.parse("${ApiConfig.baseUrl}/users/");
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(data),
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception("회원가입 실패: ${response.body}");
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
+
+    return headers;
   }
 
-  // ----------------------------------------------------
-  // 2) 로그인 (JSON 방식)
-  // ----------------------------------------------------
-  static Future<String> login(String email, String password) async {
-    final url = Uri.parse("${ApiConfig.baseUrl}/token");
+  /// 로그인 → access_token 반환
+  ///
+  /// - [loginId]: 서버의 login_id 필드에 매핑
+  /// - [password]: 평문 비밀번호
+  static Future<String> login(String loginId, String password) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/login');
 
     final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
+      uri,
+      headers: _jsonHeaders(),
       body: jsonEncode({
-        "email": email,
-        "password": password,
+        'login_id': loginId,
+        'password': password,
       }),
     );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data["access_token"];
-    } else {
-      throw Exception("로그인 실패: ${response.body}");
+    if (response.statusCode != 200) {
+      String message = '로그인에 실패했습니다. (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['detail'] != null) {
+          message = body['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
     }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final token = body['access_token'] as String?;
+    if (token == null || token.isEmpty) {
+      throw Exception('토큰이 응답에 없습니다.');
+    }
+
+    return token;
   }
 
-  // ----------------------------------------------------
-  // 3) 내 정보 가져오기
-  // ----------------------------------------------------
-  static Future<User> getMyInfo() async {
-    final url = Uri.parse("${ApiConfig.baseUrl}/users/me");
-    final response = await http.get(url, headers: _headers(json: false));
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return User(
-        id: data["id"],
-        name: data["name"],
-        birthYear: data["birth_year"],
-        region: data["region"],
-        school: data["school_name"],
-      );
-    } else {
-      throw Exception("내 정보 불러오기 실패: ${response.body}");
-    }
-  }
-
-  // ----------------------------------------------------
-  // 4) 추천 친구 목록
-  // ----------------------------------------------------
-  static Future<List<User>> getRecommendedFriends() async {
-    final url = Uri.parse("${ApiConfig.baseUrl}/users/me/recommended");
+  /// 로그인 후 내 정보 조회
+  ///
+  /// - [token]: login()에서 받은 access_token
+  static Future<User> getMyInfo(String token) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/me');
 
     final response = await http.get(
-      url,
-      headers: _headers(json: false),
+      uri,
+      headers: _jsonHeaders(token: token),
     );
 
-    if (response.statusCode == 200) {
-      final list = jsonDecode(response.body) as List;
-
-      return list.map((data) {
-        return User(
-          id: data["id"],
-          name: data["name"],
-          birthYear: data["birth_year"],
-          region: data["region"],
-          school: data["school_name"],
-        );
-      }).toList();
-    } else {
-      throw Exception("추천 친구 불러오기 실패: ${response.body}");
+    if (response.statusCode != 200) {
+      String message = '내 정보 조회에 실패했습니다. (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['detail'] != null) {
+          message = body['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
     }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return User.fromJson(body);
   }
 
-  // ----------------------------------------------------
-  // 5) 친구 추가
-  // ----------------------------------------------------
-  static Future<bool> addFriend(int targetUserId) async {
-    final url = Uri.parse("${ApiConfig.baseUrl}/friends/$targetUserId");
+  /// 회원가입 요청
+  ///
+  /// 사용 예:
+  /// final user = await ApiService.register(
+  ///   loginId: 'test123',
+  ///   password: 'pw1234!',
+  ///   realName: '홍길동',
+  ///   nickname: '길동이',
+  ///   email: 'test@example.com',
+  /// );
+  static Future<User> register({
+    required String loginId,
+    required String password,
+    required String realName,
+    required String nickname,
+    String? email,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/register');
 
     final response = await http.post(
-      url,
-      headers: _headers(json: false),
+      uri,
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'login_id': loginId,
+        'password': password,
+        'real_name': realName,
+        'nickname': nickname,
+        'email': email,
+      }),
     );
 
-    return response.statusCode == 200;
-  }
-
-  // ----------------------------------------------------
-  // 6) 친구 목록 가져오기
-  // ----------------------------------------------------
-  static Future<List<User>> getFriends() async {
-    final url = Uri.parse("${ApiConfig.baseUrl}/friends/me");
-
-    final response = await http.get(
-      url,
-      headers: _headers(json: false),
-    );
-
-    if (response.statusCode == 200) {
-      final list = jsonDecode(response.body) as List;
-
-      return list.map((data) {
-        return User(
-          id: data["id"],
-          name: data["name"],
-          birthYear: data["birth_year"],
-          region: data["region"],
-          school: data["school_name"],
-        );
-      }).toList();
-    } else {
-      throw Exception("친구 목록 불러오기 실패: ${response.body}");
+    if (response.statusCode != 201) {
+      String message = '회원가입에 실패했습니다. (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['detail'] != null) {
+          message = body['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
     }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return User.fromJson(body);
   }
 }

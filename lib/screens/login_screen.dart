@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:intersection/config/api_config.dart';
 import 'package:intersection/data/app_state.dart';
 import 'package:intersection/screens/main_tab_screen.dart';
 import 'package:intersection/screens/signup_step1_screen.dart';
-import 'package:intersection/services/api_service.dart';  // ⭐ 추가
+import 'package:intersection/services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,18 +12,20 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  // 로그인 ID (이메일/닉네임/임의 ID 모두 가능)
+  final _loginIdController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   Future<void> _login() async {
-    final email = _emailController.text.trim();
+    final loginId = _loginIdController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (loginId.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("이메일과 비밀번호를 입력해주세요")),
+        const SnackBar(content: Text("로그인 ID와 비밀번호를 입력해주세요.")),
       );
       return;
     }
@@ -34,31 +33,20 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // -----------------------------------------
       // 1) 로그인 → 토큰 획득
-      // -----------------------------------------
-      final token = await ApiService.login(email, password);
+      final token = await ApiService.login(loginId, password);
 
-      // 임시 저장
+      // 2) 토큰으로 내 정보 조회
+      final user = await ApiService.getMyInfo(token);
+
+      // 3) AppState에 반영 (AppState 구현에 맞게 조정)
       AppState.token = token;
-
-      // -----------------------------------------
-      // 2) 로그인 후 내 정보 불러오기
-      // -----------------------------------------
-      final user = await ApiService.getMyInfo();
-
-      // -----------------------------------------
-      // 3) AppState에 로그인 정보 적용
-      // -----------------------------------------
       AppState.login(token, user);
 
       if (!mounted) return;
-
       setState(() => _isLoading = false);
 
-      // -----------------------------------------
-      // 4) 메인 화면 이동
-      // -----------------------------------------
+      // 4) 메인 탭 화면으로 이동 (기존 구조 유지)
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainTabScreen()),
@@ -74,7 +62,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  void dispose() {
+    _loginIdController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text("로그인")),
       body: Padding(
@@ -83,10 +80,11 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             const SizedBox(height: 20),
             TextField(
-              controller: _emailController,
+              controller: _loginIdController,
               decoration: const InputDecoration(
-                labelText: "이메일",
-                prefixIcon: Icon(Icons.email_outlined),
+                labelText: "로그인 ID",
+                hintText: "intersection ID 또는 이메일",
+                prefixIcon: Icon(Icons.person_outline),
               ),
             ),
             const SizedBox(height: 16),
@@ -116,7 +114,14 @@ class _LoginScreenState extends State<LoginScreen> {
               child: FilledButton(
                 onPressed: _isLoading ? null : _login,
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text("로그인"),
               ),
             ),
@@ -130,9 +135,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 );
               },
-              child: const Text(
+              child: Text(
                 "아직 계정이 없나요? 회원가입",
-                style: TextStyle(fontSize: 14),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
           ],
