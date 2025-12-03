@@ -1,15 +1,27 @@
+// lib/screens/friend_profile_screen.dart
+
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intersection/models/user.dart';
 import 'package:intersection/screens/image_viewer.dart';
 
 class FriendProfileScreen extends StatelessWidget {
-  final User user;
+  /// 백엔드 기준 친구 ID (optional)
+  final int? userId;
+
+  /// 표시용 이름 (optional, user.name 없을 때 fallback)
+  final String? displayName;
+
+  /// 로컬/모델 User (기존 코드 호환용)
+  final User? user;
 
   const FriendProfileScreen({
     super.key,
-    required this.user,
+    this.user,
+    this.userId,
+    this.displayName,
   });
 
   // ==========================================================
@@ -17,23 +29,39 @@ class FriendProfileScreen extends StatelessWidget {
   // ==========================================================
   ImageProvider buildProvider(String? url, Uint8List? bytes) {
     if (bytes != null) return MemoryImage(bytes); // Web/Mobile 공용
-    if (url != null && url.startsWith("http")) return NetworkImage(url);
+    if (url != null && url.startsWith('http')) return NetworkImage(url);
     if (url != null && !kIsWeb && File(url).existsSync()) {
       return FileImage(File(url));
     }
-    return const AssetImage("assets/default_profile.png");
+    return const AssetImage('assets/default_profile.png');
   }
 
   @override
   Widget build(BuildContext context) {
+    // user / displayName / userId 중에서 사용 가능한 값으로 기본 정보 구성
+    final u = user;
+    final name = u?.name ?? displayName ?? '알 수 없음';
+    final birthYearText =
+        (u != null && u.birthYear != 0) ? '${u.birthYear}년생' : '';
+    final schoolText = (u != null && u.school.isNotEmpty) ? u.school : '';
+    final regionText = (u != null && u.region.isNotEmpty) ? u.region : '';
+
     final width = MediaQuery.of(context).size.width;
 
-    final bg = buildProvider(user.backgroundImageUrl, user.backgroundImageBytes);
-    final profile = buildProvider(user.profileImageUrl, user.profileImageBytes);
+    final bg = buildProvider(
+      u?.backgroundImageUrl,
+      u?.backgroundImageBytes,
+    );
+    final profile = buildProvider(
+      u?.profileImageUrl,
+      u?.profileImageBytes,
+    );
+
+    final heroTag = 'friend-profile-${u?.id ?? userId ?? name}';
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(user.name),
+        title: Text(name),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 12),
@@ -52,14 +80,14 @@ class FriendProfileScreen extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: () {
-                    if (user.backgroundImageUrl != null ||
-                        user.backgroundImageBytes != null) {
+                    if (u?.backgroundImageUrl != null ||
+                        u?.backgroundImageBytes != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ImageViewer(
-                            imageUrl: user.backgroundImageUrl,
-                            bytes: user.backgroundImageBytes,
+                            imageUrl: u?.backgroundImageUrl,
+                            bytes: u?.backgroundImageBytes,
                           ),
                         ),
                       );
@@ -85,21 +113,21 @@ class FriendProfileScreen extends StatelessWidget {
                   left: width / 2 - 50,
                   child: GestureDetector(
                     onTap: () {
-                      if (user.profileImageUrl != null ||
-                          user.profileImageBytes != null) {
+                      if (u?.profileImageUrl != null ||
+                          u?.profileImageBytes != null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => ImageViewer(
-                              imageUrl: user.profileImageUrl,
-                              bytes: user.profileImageBytes,
+                              imageUrl: u?.profileImageUrl,
+                              bytes: u?.profileImageBytes,
                             ),
                           ),
                         );
                       }
                     },
                     child: Hero(
-                      tag: "friend-profile-${user.id}",
+                      tag: heroTag,
                       child: CircleAvatar(
                         radius: 50,
                         backgroundImage: profile,
@@ -116,12 +144,19 @@ class FriendProfileScreen extends StatelessWidget {
             // 🔥 3) 이름 + 한 줄 정보
             // ==========================================================
             Text(
-              user.name,
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+              name,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
-              "${user.birthYear}년생 · ${user.school} · ${user.region}",
+              [
+                if (birthYearText.isNotEmpty) birthYearText,
+                if (schoolText.isNotEmpty) schoolText,
+                if (regionText.isNotEmpty) regionText,
+              ].join(' · '),
               style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
 
@@ -135,7 +170,7 @@ class FriendProfileScreen extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "최근 활동",
+                  '최근 활동',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium!
@@ -146,8 +181,7 @@ class FriendProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // 🔥 게시물 없으면 "게시물이 없습니다" 표시
-            if (user.feedImages.isEmpty)
+            if (u == null || u.feedImages.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Column(
@@ -156,7 +190,7 @@ class FriendProfileScreen extends StatelessWidget {
                         size: 48, color: Colors.grey),
                     SizedBox(height: 12),
                     Text(
-                      "게시물이 없습니다",
+                      '게시물이 없습니다',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                   ],
@@ -166,14 +200,15 @@ class FriendProfileScreen extends StatelessWidget {
               GridView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
-                itemCount: user.feedImages.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                itemCount: u.feedImages.length,
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisSpacing: 4,
                   crossAxisSpacing: 4,
                 ),
                 itemBuilder: (context, index) {
-                  final img = user.feedImages[index];
+                  final img = u.feedImages[index];
                   final provider = buildProvider(img, null);
 
                   return GestureDetector(
@@ -212,14 +247,22 @@ class FriendProfileScreen extends StatelessWidget {
                 children: [
                   const Divider(thickness: 0.6),
                   const SizedBox(height: 20),
-                  Text("학교: ${user.school}",
-                      style: const TextStyle(fontSize: 16)),
+                  Text(
+                    '학교: ${schoolText.isNotEmpty ? schoolText : '정보 없음'}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
-                  Text("지역: ${user.region}",
-                      style: const TextStyle(fontSize: 16)),
+                  Text(
+                    '지역: ${regionText.isNotEmpty ? regionText : '정보 없음'}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
-                  Text("${user.birthYear}년생",
-                      style: const TextStyle(fontSize: 16)),
+                  Text(
+                    birthYearText.isNotEmpty
+                        ? birthYearText
+                        : '생년 정보 없음',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                   const SizedBox(height: 30),
                 ],
               ),

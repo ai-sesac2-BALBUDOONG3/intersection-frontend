@@ -1,74 +1,25 @@
 // lib/data/app_state.dart
 
 import 'package:intersection/models/user.dart';
-import 'package:intersection/models/post.dart';
-import 'package:intersection/data/user_storage.dart';
 
 class AppState {
-  /// 현재 로그인한 유저
-  static User? currentUser;
-
   /// JWT 토큰
   static String? token;
 
-  /// 🔥 DB에서 불러온 친구 목록
+  /// 현재 로그인한 유저 (백엔드 /me 같은 API로 채워질 예정)
+  static User? currentUser;
+
+  /// 내 친구 목록 (FriendsScreen에서 채움)
   static List<User> friends = [];
 
-  /// 🔥 커뮤니티 포스트 (추후 API로 대체)
-  static List<Post> communityPosts = [];
-
-  /// 내가 참여해본 채팅방 목록 (friendId 기반)
+  /// 채팅 중인 친구의 userId 목록 (ChatScreen에서 채움)
   static List<int> chatList = [];
 
-  /// ----------------------------------------------------
-  /// 친구 추가 (로컬 반영)
-  /// ----------------------------------------------------
-  static void follow(User user) {
-    if (!friends.any((f) => f.id == user.id)) {
-      friends.add(user);
-    }
-  }
-
-  /// ----------------------------------------------------
-  /// 친구 제거
-  /// ----------------------------------------------------
-  static void unfollow(User user) {
-    friends.removeWhere((f) => f.id == user.id);
-  }
-
-  /// ----------------------------------------------------
-  /// 로그인 (토큰 + 유저정보 메모리에 저장)
-  /// ----------------------------------------------------
-  static void login(String newToken, User user) {
-    token = newToken;
-    currentUser = user;
-
-    // 🔥 자동로그인 저장 (추가)
-    UserStorage.saveToken(newToken);
-    UserStorage.saveUser(user);
-  }
-
-  /// ----------------------------------------------------
-  /// 🔥 유저 정보 일부 업데이트 (프로필 수정/사진변경 후)
-  /// ----------------------------------------------------
-  static void updateCurrentUser(User updatedUser) {
-    currentUser = updatedUser;
-
-    // 로컬 저장소에도 반영 (추가)
-    UserStorage.saveUser(updatedUser);
-  }
-
-  /// ----------------------------------------------------
-  /// 🔥 로그아웃 (완전한 버전)
-  /// ----------------------------------------------------
-  static Future<void> logout() async {
+  /// 로그아웃/토큰 만료 시 한 번에 초기화
+  static void clear() {
     token = null;
     currentUser = null;
     friends = [];
-    communityPosts = [];
     chatList = [];
-
-    // 🔥 SharedPreferences 초기화 → 자동로그인 제거
-    await UserStorage.clear();
   }
 }
