@@ -1,5 +1,3 @@
-// lib/screens/signup_step1_screen.dart
-
 import 'package:flutter/material.dart';
 import '../data/signup_form_data.dart';
 
@@ -71,7 +69,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
       ),
       body: Column(
         children: [
-          // 진행도 표시 (1/3)
+          // 진행도 표시 (이제 1/3 로 변경)
           Padding(
             padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 24.0),
             child: Column(
@@ -241,7 +239,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
 
                   const SizedBox(height: 32),
 
-                  // Step2 삭제 → Step3로 바로 이동
+                  // ⭐ Step2 삭제 → Step3로 바로 이동
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -252,8 +250,6 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                                   .copyWith(
                                 loginId: loginIdController.text,
                                 password: passwordController.text,
-                                // email을 명시적으로 loginId와 동일하게 세팅
-                                email: loginIdController.text,
                               );
 
                               Navigator.pushNamed(

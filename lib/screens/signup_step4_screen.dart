@@ -1,8 +1,9 @@
-// lib/screens/signup_step4_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:intersection/data/signup_form_data.dart';
-import 'package:intersection/services/api_service.dart';
+import '../data/signup_form_data.dart';
+import '../services/api_service.dart';
+import '../models/user.dart';
+import '../data/app_state.dart';
+import '../data/user_storage.dart';
 import 'package:intersection/screens/main_tab_screen.dart';
 
 class SignupStep4Screen extends StatefulWidget {
@@ -28,8 +29,6 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
   // 전학 여부
   bool hasTransferInfo = false;
   late TextEditingController transferInfoController;
-
-  bool _isSubmitting = false;
 
   final List<String> schoolLevels = ['초등학교', '중학교', '고등학교'];
 
@@ -72,23 +71,9 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
   }
 
   bool _canProceed() {
-    return !_isSubmitting &&
-        selectedSchoolLevel != null &&
+    return selectedSchoolLevel != null &&
         schoolNameController.text.isNotEmpty &&
         _isValidYear(entryYearController.text);
-  }
-
-  String _mapSchoolLevelToType(String? level) {
-    switch (level) {
-      case '초등학교':
-        return 'elementary';
-      case '중학교':
-        return 'middle';
-      case '고등학교':
-        return 'high';
-      default:
-        return level ?? '';
-    }
   }
 
   Future<void> _submitSignup() async {
@@ -110,84 +95,50 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
       return;
     }
 
-    if (_isSubmitting) return;
-
-    setState(() => _isSubmitting = true);
-
-    // 최신 값 form에 반영
-    form.schoolLevel = selectedSchoolLevel ?? '';
-    form.schoolName = schoolNameController.text.trim();
-    form.entryYear = admissionYear.toString();
-    form.nicknames = nicknamesController.text.trim().isNotEmpty
-        ? nicknamesController.text.trim()
-        : null;
-    form.memoryKeywords = memoryKeywordsController.text.trim().isNotEmpty
-        ? memoryKeywordsController.text.trim()
-        : null;
-    form.transferInfo = hasTransferInfo &&
-            transferInfoController.text.trim().isNotEmpty
-        ? transferInfoController.text.trim()
-        : null;
-    form.interests = interestsController.text
-        .split(RegExp(r'[,/]+'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    // 서버로 보낼 payload
+    final payload = {
+      'email': form.loginId,
+      'password': form.password,
+      'name': form.name,
+      'birth_year': birthYear,
+      'gender': form.gender,
+      'region': form.baseRegion,
+      'school_name': schoolNameController.text,
+      'school_type': selectedSchoolLevel,
+      'admission_year': admissionYear,
+    };
 
     try {
-      // ✅ 1) 회원가입
-      await ApiService.register(
-        loginId: form.loginId,
-        password: form.password,
-        realName: form.name,
-        nickname: form.primaryNickname,
-        email: form.email ?? form.loginId,
-      );
+      // 1) 회원가입 요청
+      final signupResult = await ApiService.signup(payload);
 
-      // ✅ 2) 로그인 (토큰 저장)
-      await ApiService.login(
-        loginId: form.loginId,
-        password: form.password,
-      );
+      // 2) 서버에서 준 유저 정보로 User 생성
+      final newUser = User.fromJson(signupResult);
 
-      // ✅ 3) 온보딩
-      final onboardingPayload = {
-        "anchor": {
-          "school_name": form.schoolName,
-          "school_type": _mapSchoolLevelToType(form.schoolLevel),
-          "admission_year": admissionYear,
-          "base_region": form.baseRegion,
-          "nicknames": form.nicknames,
-          "memory_keywords": form.memoryKeywords,
-          "transfer_info": form.transferInfo,
-          "clubs": form.clubs,
-        },
-        "school_histories": [],
-        "keywords": [
-          if (form.memoryKeywords != null) form.memoryKeywords,
-          if (form.interests != null && form.interests!.isNotEmpty)
-            ...form.interests!,
-        ].whereType<String>().toList(),
-      };
+      // 3) 로그인 처리
+      final token = await ApiService.login(form.loginId, form.password);
 
-      try {
-        await ApiService.onboarding(onboardingPayload);
-      } catch (e) {
-        debugPrint('온보딩 호출 실패: $e');
-      }
+      // 4) 메모리 저장
+      AppState.login(token, newUser);
+
+      // 5) 로컬 저장 (자동로그인)
+      await UserStorage.saveToken(token);
+      await UserStorage.saveUser(newUser);
 
       if (!mounted) return;
 
+      // 6) 완료 팝업
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('회원가입 완료'),
-          content: const Text('intersection에 오신 것을 환영합니다!\n추천 친구를 확인해볼까요?'),
+          content: const Text('intersection에 오신 것을 환영합니다!'),
           actions: [
             TextButton(
               child: const Text('확인'),
               onPressed: () {
                 Navigator.pop(context);
+
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
@@ -200,14 +151,8 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
           ],
         ),
       );
-    } on ApiException catch (e) {
-      _showError(e.message);
     } catch (e) {
-      _showError('회원가입 중 오류가 발생했습니다: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      _showError(e.toString());
     }
   }
 
@@ -231,7 +176,7 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('회원가입 - 3단계'),
+        title: const Text('회원가입 - 4단계'),
       ),
       body: Column(
         children: [
@@ -247,8 +192,7 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  const Text('학교급',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('학교급', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: selectedSchoolLevel,
@@ -266,8 +210,7 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  const Text('학교명',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('학교명', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: schoolNameController,
@@ -292,8 +235,7 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      prefixIcon:
-                          const Icon(Icons.calendar_month_outlined),
+                      prefixIcon: const Icon(Icons.calendar_month_outlined),
                       errorText: entryYearController.text.isNotEmpty &&
                               !_isValidYear(entryYearController.text)
                           ? '올바른 연도를 입력해주세요'
@@ -369,7 +311,7 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _canProceed() ? _submitSignup : null,
-                child: Text(_isSubmitting ? '처리 중...' : '회원가입 완료'),
+                child: const Text('회원가입 완료'),
               ),
             ),
           ),

@@ -1,12 +1,7 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:intersection/data/app_state.dart';
 import 'package:intersection/data/signup_form_data.dart';
 import 'package:intersection/data/user_storage.dart';
-
-// 🔥 ApiConfig import (baseUrl 확인용)
-import 'config/api_config.dart';
 
 // Screens
 import 'package:intersection/screens/landing_screen.dart';
@@ -28,14 +23,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // --------------------------------------------------------
-  // 🔍 현재 앱이 어떤 API baseUrl을 사용하는지 출력
-  //  - 콘솔에서 확인용 (문제 해결 후 지워도 됨)
-  // --------------------------------------------------------
-  // ignore: avoid_print
-  print('[DEBUG] ApiConfig.baseUrl = ${ApiConfig.baseUrl}');
-
-  // --------------------------------------------------------
-  // 🔥 자동 로그인 복원
+  // 🔥 자동 로그인 복원 (새 구조)
   // --------------------------------------------------------
   AppState.token = await UserStorage.loadToken();
   AppState.currentUser = await UserStorage.loadUser();
@@ -65,6 +53,8 @@ class IntersectionApp extends StatelessWidget {
           onError: Colors.white,
           surface: Colors.white,
           onSurface: Colors.black,
+          background: Color(0xFFF7F7F7),
+          onBackground: Colors.black,
         ),
 
         fontFamily: 'Pretendard',
@@ -72,10 +62,7 @@ class IntersectionApp extends StatelessWidget {
           bodyLarge: TextStyle(color: Colors.black87),
           bodyMedium: TextStyle(color: Colors.black),
           bodySmall: TextStyle(color: Colors.black54),
-          titleLarge: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+          titleLarge: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
           titleMedium: TextStyle(color: Colors.black87),
           titleSmall: TextStyle(color: Colors.black54),
         ),
@@ -108,9 +95,7 @@ class IntersectionApp extends StatelessWidget {
             side: const BorderSide(color: Colors.black, width: 1.0),
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
 
@@ -129,12 +114,11 @@ class IntersectionApp extends StatelessWidget {
 
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: Colors.white,
-          // withOpacity(0.1) → withValues 로 대체 (신버전 대응)
-          indicatorColor: Colors.black.withValues(alpha: 0.1),
-          labelTextStyle: WidgetStateProperty.all(
+          indicatorColor: Colors.black.withOpacity(0.1),
+          labelTextStyle: MaterialStateProperty.all(
             const TextStyle(color: Colors.black87, fontSize: 12),
           ),
-          iconTheme: WidgetStateProperty.all(
+          iconTheme: MaterialStateProperty.all(
             const IconThemeData(color: Colors.black87),
           ),
         ),
@@ -147,7 +131,7 @@ class IntersectionApp extends StatelessWidget {
       ),
 
       // --------------------------------------------------------
-      // 🔥 초기 화면 (자동 로그인 적용)
+      // 🔥 자동 로그인 적용된 초기 화면
       // --------------------------------------------------------
       home: AppState.currentUser == null
           ? const LandingScreen()
@@ -187,21 +171,14 @@ class IntersectionApp extends StatelessWidget {
             return _error("회원가입 데이터가 누락되었습니다.");
 
           case '/login':
-            return MaterialPageRoute(
-              builder: (_) => const LoginScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const LoginScreen());
 
           case '/recommended':
-            return MaterialPageRoute(
-              builder: (_) => const RecommendedFriendsScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const RecommendedFriendsScreen());
 
           case '/friends':
-            return MaterialPageRoute(
-              builder: (_) => const FriendsScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const FriendsScreen());
 
-          // ✅ 댓글 화면: Post 객체 필요
           case '/comments':
             if (args is Post) {
               return MaterialPageRoute(
@@ -210,14 +187,9 @@ class IntersectionApp extends StatelessWidget {
             }
             return _error("게시물 정보가 누락되었습니다.");
 
-          // ✅ 글쓰기 화면
-          //  - 지금은 기본값으로 '전체 커뮤니티' 사용
-          //  - 나중에 필요하면 arguments 로 communityName / community 넘기면 됨
           case '/write':
             return MaterialPageRoute(
-              builder: (_) => const CommunityWriteScreen(
-                communityName: '전체 커뮤니티',
-              ),
+              builder: (_) => const CommunityWriteScreen(),
             );
 
           case '/report':

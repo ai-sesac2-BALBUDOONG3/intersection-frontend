@@ -1,5 +1,3 @@
-// lib/screens/signup_step3_screen.dart
-
 import 'package:flutter/material.dart';
 import '../data/signup_form_data.dart';
 
@@ -23,22 +21,8 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
 
   final List<String> genders = ['남성', '여성'];
   final List<String> regions = [
-    '서울',
-    '부산',
-    '대구',
-    '인천',
-    '광주',
-    '대전',
-    '울산',
-    '경기',
-    '강원',
-    '충북',
-    '충남',
-    '전북',
-    '전남',
-    '경북',
-    '경남',
-    '제주',
+    '서울', '부산', '대구', '인천', '광주', '대전', '울산',
+    '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주',
   ];
 
   @override
@@ -46,8 +30,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
     super.initState();
     nameController = TextEditingController(text: widget.data.name);
     birthYearController = TextEditingController(text: widget.data.birthYear);
-    selectedGender =
-        widget.data.gender.isNotEmpty ? widget.data.gender : null;
+    selectedGender = widget.data.gender.isNotEmpty ? widget.data.gender : null;
     selectedRegion =
         widget.data.baseRegion.isNotEmpty ? widget.data.baseRegion : null;
   }
@@ -83,7 +66,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
       ),
       body: Column(
         children: [
-          // 진행도 표시 (2/3)
+          // 진행도 표시
           Padding(
             padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 24.0),
             child: Column(
@@ -92,8 +75,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('진행도',
-                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text('진행도', style: TextStyle(fontSize: 12, color: Colors.grey)),
                     Text(
                       '단계 2/3',
                       style: TextStyle(
@@ -116,8 +98,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                         value: value,
                         minHeight: 6,
                         backgroundColor: Colors.grey[200],
-                        valueColor:
-                            const AlwaysStoppedAnimation<Color>(Colors.black),
+                        valueColor: const AlwaysStoppedAnimation(Colors.black),
                       );
                     },
                   ),
@@ -160,8 +141,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                   const SizedBox(height: 20),
 
                   // 생년
-                  const Text('생년도',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('생년도', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: birthYearController,
@@ -171,8 +151,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      prefixIcon:
-                          const Icon(Icons.calendar_month_outlined),
+                      prefixIcon: const Icon(Icons.calendar_month_outlined),
                       errorText: birthYearController.text.isNotEmpty &&
                               !_isValidBirthYear(birthYearController.text)
                           ? '1900~${DateTime.now().year - 14}년 사이의 연도를 입력해주세요'
@@ -186,15 +165,10 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                   const Text('성별', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedGender,
+                    initialValue: selectedGender,
                     hint: const Text('성별을 선택해주세요'),
                     items: genders
-                        .map(
-                          (g) => DropdownMenuItem(
-                            value: g,
-                            child: Text(g),
-                          ),
-                        )
+                        .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                         .toList(),
                     onChanged: (v) => setState(() => selectedGender = v),
                     decoration: InputDecoration(
@@ -207,43 +181,34 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                   const SizedBox(height: 20),
 
                   // 지역
-                  const Text('기본 지역',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('기본 지역', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedRegion,
+                    initialValue: selectedRegion,
                     hint: const Text('지역을 선택해주세요'),
                     items: regions
-                        .map(
-                          (r) => DropdownMenuItem(
-                            value: r,
-                            child: Text(r),
-                          ),
-                        )
+                        .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                         .toList(),
                     onChanged: (v) => setState(() => selectedRegion = v),
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      prefixIcon:
-                          const Icon(Icons.location_on_outlined),
+                      prefixIcon: const Icon(Icons.location_on_outlined),
                     ),
                   ),
                   const SizedBox(height: 32),
 
-                  // 이전 / 다음 버튼
+                  // 다음 버튼
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                                borderRadius: BorderRadius.circular(8)),
                           ),
                           child: const Text('이전'),
                         ),
@@ -267,11 +232,9 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                                borderRadius: BorderRadius.circular(8)),
                           ),
                           child: const Text('다음'),
                         ),
